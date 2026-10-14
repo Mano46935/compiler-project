@@ -1,0 +1,24 @@
+// One instruction per nonblank source line. A terminal full stop is optional.
+start: statement DOT?
+?statement: page | add_element | format_element
+page: PLEASE? ADD ARTICLE? PAGE TITLED STRING
+add_element: PLEASE? ADD ARTICLE? SIZE? COLOR? ELEMENT THAT? SAYS STRING
+format_element: PLEASE? MAKE REFERENCE BOLD
+
+PLEASE: /please\b/
+ADD: /add\b/
+ARTICLE: /(?:a|the)\b/
+PAGE: /page\b/
+TITLED: /titled\b/
+ELEMENT: /(?:heading|paragraph|button)\b/
+THAT: /that\b/
+SAYS: /says\b/
+MAKE: /make\b/
+REFERENCE: /(?:it|this)\b/
+BOLD: /bold\b/
+SIZE: /(?:small|medium|big)\b/
+COLOR: /(?:blue|red|green|black|white)\b/
+DOT: "."
+STRING: /"(?:[^"\\\r\n]|\\.)*"/
+%import common.WS_INLINE
+%ignore WS_INLINE
