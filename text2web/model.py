@@ -26,6 +26,8 @@ class Statement:
     properties: dict[str, str] = field(default_factory=dict)
     reference: str | None = None
     resolved_id: str | None = None
+    target_type: str | None = None
+    target_id: str | None = None
 
 
 @dataclass
@@ -38,12 +40,26 @@ class Element:
 
 
 @dataclass
+class PageNode:
+    element_id: str | None = None
+    direction: str | None = None
+    children: list["PageNode"] = field(default_factory=list)
+
+
+@dataclass
+class PageTree:
+    title: str
+    children: list[PageNode] = field(default_factory=list)
+
+
+@dataclass
 class CompilationResult:
     sentences: list[Sentence] = field(default_factory=list)
     tokens: list[dict] = field(default_factory=list)
     ast: list[Statement] = field(default_factory=list)
     symbols: list[Element] = field(default_factory=list)
     diagnostics: list[Diagnostic] = field(default_factory=list)
+    page_tree: PageTree | None = None
     html: str | None = None
     css: str | None = None
 
@@ -57,4 +73,5 @@ class CompilationResult:
             "tokens": self.tokens,
             "ast": [asdict(s) for s in self.ast],
             "symbol_table": [asdict(s) for s in self.symbols],
+            "page_tree": asdict(self.page_tree) if self.page_tree else None,
         }

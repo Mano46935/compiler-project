@@ -21,15 +21,18 @@ def main() -> int:
         if args.debug:
             print(json.dumps(result.debug_data(), indent=2, ensure_ascii=True))
         if not result.success:
-            for error in result.diagnostics:
+            for error in sorted(result.diagnostics, key=lambda d: d.line):
                 print(f"Line {error.line} [{error.phase}]: {error.message}", file=sys.stderr)
-            print("Compilation failed; no output files written.", file=sys.stderr)
+                print(f"  ✗ line {error.line}: {error.message}", file=sys.stderr)
+            count = len(result.diagnostics)
+            print(f"{count} {'error' if count == 1 else 'errors'} · no files written", file=sys.stderr)
             return 1
-        write_output(result, args.output, overwrite=args.force)
+        write_output(result, args.output, overwrite=args.force, asset_root=args.source.parent)
     except (OSError, UnicodeError) as error:
         print(f"File error: {error}", file=sys.stderr)
         return 2
-    print(f"Compiled {len(result.symbols)} elements into {args.output / 'index.html'} and style.css.")
+    print("✓ all sentences understood · 0 errors")
+    print(f"✓ wrote index.html and style.css ({args.output / 'index.html'})")
     return 0
 
 

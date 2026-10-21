@@ -1,4 +1,4 @@
-"""Real Lark lexical analysis and LALR parsing for the Review 1 language."""
+"""Lark lexical analysis and LALR parsing for the controlled-English language."""
 
 import json
 from pathlib import Path
@@ -34,12 +34,12 @@ def parse_sentence(sentence: Sentence, result: CompilationResult) -> None:
         ))
         return
 
-    fields = {token.type: str(token) for token in tree.children if isinstance(token, Token)}
+    child_tokens = [token for token in tree.children if isinstance(token, Token)]
+    fields = {token.type: str(token) for token in child_tokens}
     try:
-        text = json.loads(fields["STRING"]) if "STRING" in fields else None
-        # Reject lone surrogate escapes, which cannot be written as UTF-8.
-        if text is not None:
-            text.encode("utf-8")
+        strings = [json.loads(str(token)) for token in child_tokens if token.type == "STRING"]
+        for value in strings:
+            value.encode("utf-8")
     except (ValueError, UnicodeError):
         result.diagnostics.append(Diagnostic(
             "syntax", sentence.line,
@@ -48,14 +48,52 @@ def parse_sentence(sentence: Sentence, result: CompilationResult) -> None:
         ))
         return
 
+    text = strings[-1] if strings else None
     if tree.data == "page":
         statement = Statement("page", sentence.line, text=text)
     elif tree.data == "add_element":
+        if fields["ELEMENT"] == "image":
+            result.diagnostics.append(Diagnostic(
+                "syntax", sentence.line,
+                'Add images with: Add an image "file.png" described as "Description".',
+            ))
+            return
         properties = {name.lower(): fields[name] for name in ("SIZE", "COLOR") if name in fields}
         statement = Statement("add", sentence.line, fields["ELEMENT"], text, properties)
-    else:
+    elif tree.data == "add_image":
+        if fields["ELEMENT"] != "image":
+            result.diagnostics.append(Diagnostic(
+                "syntax", sentence.line,
+                'Add images with: Add an image "file.png" described as "Description".',
+            ))
+            return
+        statement = Statement(
+            "add", sentence.line, "image", strings[1], {"src": strings[0]},
+        )
+    elif tree.data == "position_element":
+        statement = Statement(
+            "position", sentence.line,
+            properties={"position": fields["DIRECTION"]},
+            reference=fields["REFERENCE"], target_type=fields["ELEMENT"],
+        )
+    elif "BOLD" in fields:
         statement = Statement(
             "format", sentence.line,
             properties={"font-weight": "bold"}, reference=fields["REFERENCE"],
+        )
+    elif "FONT" in fields:
+        statement = Statement(
+            "format", sentence.line,
+            properties={"font-family": fields["FONT"]}, reference=fields["REFERENCE"],
+        )
+    elif "SIZE" in fields:
+        statement = Statement(
+            "format", sentence.line,
+            properties={"size": fields["SIZE"]}, reference=fields["REFERENCE"],
+        )
+    else:
+        statement = Statement(
+            "format", sentence.line,
+            properties={"color": fields["COLOR"]}, reference=fields["REFERENCE"],
         )
     result.ast.append(statement)
